@@ -36,11 +36,17 @@ int yyerror(const char *s);
 
 %%
 
+ /* first production: just output the HTML code */
+
 s : e                              { printf("%s", $1); };
+
+ /* expressions: concatenate repeatable block into a list */
 
 e : r e                            { snprintf(buffer, BUFSIZE, "%s%s", $1, $2);
                                      $$ = strdup(buffer); };
-e : /* empty */                    { $$ = ""; };
+  | /* empty */                    { $$ = ""; };
+
+ /* repeatable blocks: are expressions that can be repeated */
 
 r : NUM '*' r                      { if(strlen($3) * $1 < BUFSIZE) {
                                          buffer[0] = '\0';
@@ -51,14 +57,14 @@ r : NUM '*' r                      { if(strlen($3) * $1 < BUFSIZE) {
                                      } else {
                                          $$ = $3;
                                      } };
-r : tag '{' STRING '}'             { snprintf(buffer, BUFSIZE, "%s\n%s\n%s\n", $1.open, $3, $1.close);
+  | tag '{' STRING '}'             { snprintf(buffer, BUFSIZE, "%s\n%s\n%s\n", $1.open, $3, $1.close);
                                      $$ = strdup(buffer); };
-r : tag '>' e '<'                  { snprintf(buffer, BUFSIZE, "%s\n%s%s\n", $1.open, $3, $1.close);
+  | tag '>' e '<'                  { snprintf(buffer, BUFSIZE, "%s\n%s%s\n", $1.open, $3, $1.close);
                                      $$ = strdup(buffer); };
-/*r : tag '>' e                      { snprintf(buffer, BUFSIZE, "%s\n%s\n%s", $1.open, $3, $1.close);
-  $$ = strdup(buffer); };*/
-r : tag                            { snprintf(buffer, BUFSIZE, "%s%s\n", $1.open, $1.close);
+  | tag                            { snprintf(buffer, BUFSIZE, "%s%s\n", $1.open, $1.close);
                                      $$ = strdup(buffer); };
+
+ /* tags: HTML tags composed by an opening part and a closing part */
 
 tag : STRING id class attr         { snprintf(buffer, BUFSIZE,
 					      "<%s%s%s%s%s%s%s>",
@@ -72,7 +78,7 @@ tag : STRING id class attr         { snprintf(buffer, BUFSIZE,
                                      $$.open = strdup(buffer);
 				     snprintf(buffer, BUFSIZE, "</%s>", $1);
                                      $$.close = strdup(buffer); };
-tag : id class attr                { snprintf(buffer, BUFSIZE,
+    | id class attr                { snprintf(buffer, BUFSIZE,
 					      "<div%s%s%s%s%s%s>",
 					      $1[0] != '\0' ? " " : "",
 					      $1,
@@ -83,13 +89,19 @@ tag : id class attr                { snprintf(buffer, BUFSIZE,
                                      $$.open = strdup(buffer);
                                      $$.close = "</div>"; };
 
+ /* id: the id of a tag */
+
 id : '#' STRING                    { snprintf(buffer, BUFSIZE, "id=\"%s\"", $2);
                                      $$ = strdup(buffer); };
-id : /* empty */                   { $$ = ""; };
+   | /* empty */                   { $$ = ""; };
+
+ /* classes: the classes of a tag */
 
 class : '.' STRING                 { snprintf(buffer, BUFSIZE, "class=\"%s\"", $2);
                                      $$ = strdup(buffer); };
-class : /* empty */                { $$ = ""; };
+      | /* empty */                { $$ = ""; };
+
+ /* attributes: attributes of a tag */
 
 attr : '$' STRING '=' STRING attr  { snprintf(buffer, BUFSIZE,
 					      "%s=\"%s\"%s%s",
@@ -98,8 +110,8 @@ attr : '$' STRING '=' STRING attr  { snprintf(buffer, BUFSIZE,
 					      $5[0] != '\0' ? " " : "",
 					      $5);
                                      $$ = strdup(buffer); };
-attr : '$' STRING attr             { $$ = $2; };
-attr : /* empty */                 { $$ = ""; };
+     | '$' STRING attr             { $$ = $2; };
+     | /* empty */                 { $$ = ""; };
 
 %%
 
@@ -107,6 +119,7 @@ int yylex()
 {
   static int levels_down = 0;
   static int in_parens = 0;
+  static int in_quotes = 0;
     
   char str[1024];
   char c;
@@ -140,6 +153,28 @@ int yylex()
       
     }
 
+    if(in_quotes && c != '"') { /* literal STRING in quotes */
+
+      str[0] = c;
+	
+      for(i = 1; i < 1024 - 1; i++) {
+	c = getchar();
+
+	if(c != EOF && c != '"')
+	  str[i] = c;
+	else
+	  break;
+      }
+
+      str[i] = '\0';
+
+      in_quotes = 0;
+
+      yylval.string = strdup(str);
+      return STRING;
+      
+    }
+
     switch(c) {
 
       /* catch various symbols */
@@ -154,7 +189,7 @@ int yylex()
     case '=':
     case '*':
     symbol_char:
-      return c;
+      return c;      
 
       /* skip spaces */
 
@@ -162,7 +197,12 @@ int yylex()
     case '\n':
     case '\r':
       continue;
+
+      /* quoted string */
       
+    case '"':
+      in_quotes = 1;
+      continue;
     }
     
     if(isalpha(c)) { /* STRING */
@@ -176,6 +216,25 @@ int yylex()
 	  str[i] = c;
 	else
 	  break;
+
+	/*
+	switch(c) {
+	case '>':
+	case '<':
+	case '{':
+	case '}':
+	case '#':
+	case '.':
+	case '$':
+	case '=':
+	case '*':
+	case ' ':
+	case '\n':
+	case '\r':	  
+	  break;
+	default:
+	  str[i] = c;
+	}*/
       }
 
       str[i] = '\0';
