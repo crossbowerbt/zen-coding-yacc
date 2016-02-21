@@ -10,7 +10,7 @@ Apparently I was able to code the essential features of Emmet using ~250 lines o
 A not so bad result considering that the Sublime Text version of Emmet is ~800 lines of code and the Emacs version is ~4000 lines of code.
 
 Clearly I do not have a text editor to interface with, so it was a little easier for me to write a short program.
-Nevertheless it was a very good approach to learning yacc, and the tool works satisfactorily.
+Nevertheless the tool works, and it was a very good first project to learn yacc.
 
 # usage
 The syntax is a little different from Emmet.
@@ -48,6 +48,6 @@ The main differences with emmet are:
 * we use '>' instead of '^' to go up a level
 * we use spaces instead of '+' to place tags on the same level
 * we use '$attr1=value$attr2=value2$...' instead of '[attr1="value1" attr2="value2" ...]'
-* to repeat a block several times we use a prefix 'num * block', instead emmet uses a suffix 'block * num'
+* to repeat a block several times we use a prefix 'num * block', instead of a suffix 'block * num'
 
 To see what you miss using this tool see the emmet syntax documentation: http://docs.emmet.io/abbreviations/syntax/
